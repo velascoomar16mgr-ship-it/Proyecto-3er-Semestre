@@ -1,6 +1,6 @@
 Planificador de Rutas de Reciclaje 
 > **Proyecto Integrador — Programación Orientada a Objetos (POO)**  
-> **Universidad del Valle de México (UVM) Campus San Rafael**  
+> **Universidad del Valle de México (UVM) Campus Reforma**  
 > **Carrera:Ingeniería en Sistemas Computacionales (3er Semestre)  
 > **Docente / Product Owner:** Prof. César Antonio Ríos Olivares  
 
