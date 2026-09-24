@@ -1,4 +1,4 @@
-Planificador de Rutas de Reciclaje Inteligente
+Planificador de Rutas de Reciclaje 
 > **Proyecto Integrador — Programación Orientada a Objetos (POO)**  
 > **Universidad del Valle de México (UVM) Campus San Rafael**  
 > **Carrera:Ingeniería en Sistemas Computacionales (3er Semestre)  
