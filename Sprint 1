@@ -1,2 +1,180 @@
-#En este apartado es donde subiremos los avances del codigo, cada modificacion por mas simple que sea sera actualizado en este espacio 
-#Para guardar la version anteriror del codigo sera en otro apartado titulado "Version anterior
+# PROYECTO:PLANIFICADOR DE RUTA DE RECICLAJE
+
+# CLASE Principal: RESIDUO
+# Esta es la clase principal de nuestro proyecto
+# Aquí colocamos las características que todos los residuos
+class Residuo:
+
+    # CONSTRUCTOR
+    # El constructor se utiliza para darle informacion al objeto cuando lo creamos
+    def __init__(self, nombre, peso):
+
+        # Guardamos el nombre del residuo
+        self.nombre = nombre
+
+        # Guardamos el peso del residuo en kilogramos
+        self.peso = peso
+
+    # METODO PARA PODER MOSTRAR INFORMACION
+    # Este metodo muestra los datos principales del residuo
+    def mostrar_info(self):
+
+        # Mostramos el nombre del residuo.
+        print("Nombre:", self.nombre)
+
+        # Mostramos el peso del residuo
+        print("Peso:", self.peso, "kg")
+
+# CLASE: PLASTICO
+# Esta clase hereda de la clase Residuo
+class Plastico(Residuo):
+
+    # Este metodo indica como es que se puede reciclar el plastico
+    def reciclar(self):
+        print("El plastico se puede lavar y llevar a reciclaje.")
+
+# CLASE: METAL
+class Metal(Residuo):
+
+    # Este metodo indica como se puede reciclar el metal
+    def reciclar(self):
+        print("El metal se puede separar y llevar a reciclaje.")
+
+
+# CLASE: PAPEL
+class Papel(Residuo):
+
+    # Este metodo indica que podemos hacer con el papel
+    def reciclar(self):
+        print("El papel se puede reutilizar o reciclar.")
+
+
+# CLASE: ELECTRONICO
+class Electronico(Residuo):
+
+    # Este metodo indica donde debe llevarse este tipo de residuo para su reciclaje
+    def reciclar(self):
+        print("El electronico debe llevarse a un punto especializado.")
+
+
+# aqui se junta la basura de un lugar
+class PuntoAcopio:
+
+    def __init__(self, nombre, tipo_residuo):
+        self.nombre = nombre               # como se llama el lugar
+        self.tipo_residuo = tipo_residuo   #el tipo de basura que recibe
+        self.residuos = []                 # lista de residuos que hay 
+
+    #mete un residuo nuevo a este punto
+    def agregar_residuo(self, residuo):
+        self.residuos.append(residuo)
+
+    # suma el peso de todo lo que hay en el punto
+    def peso_total(self):
+        total = 0
+        i = 0
+        while i < len(self.residuos):
+            total = total + self.residuos[i].peso
+            i = i + 1
+        return total
+
+
+# junta varias paradas, esto lo usa el camion
+class Ruta:
+
+    def __init__(self):
+        self.paradas = []   # lista de puntos a los q va a ir
+
+    # mete un punto nuevo a la ruta
+    def agregar_parada(self, punto):
+        self.paradas.append(punto)
+
+    #muestra las paradas en orden
+    def mostrar_ruta(self):
+        i = 0
+        while i < len(self.paradas):
+            print("  parada", i + 1, ":", self.paradas[i].nombre)
+            i = i + 1
+
+    #aqui sumamos el peso de todas las paradas
+    def peso_total(self):
+        total = 0
+        i = 0
+        while i < len(self.paradas):
+            total = total + self.paradas[i].peso_total()
+            i = i + 1
+        return total
+
+
+# clase base de los camioncitos
+class Camion:
+
+    def __init__(self, nombre, tipo_residuo, capacidad):
+        self.nombre = nombre
+        self.tipo_residuo = tipo_residuo   #el tipo de basura que recoge cada uno
+        self.capacidad = capacidad         # cuanto le cabe en kilos a cada camion
+        self.ruta = Ruta()                 #y aqui se guarda su ruta
+
+    # agrega una parada a la ruta del camion
+    def agregar_parada(self, punto):
+
+        # primero revisamos que el tipo de residuo sea el correcto
+        if punto.tipo_residuo == self.tipo_residuo:
+
+            # calculamos cuanto pesa el camion ahorita
+            peso_actual = self.ruta.peso_total()
+
+            #calculamos cuanto pesaria si agregamos esta parada
+            nuevo_peso = peso_actual + punto.peso_total()
+
+            #revisamos que no pase de la capacidad del camion
+            if nuevo_peso <= self.capacidad:
+
+                # si le cabe, agregamos la parada
+                self.ruta.agregar_parada(punto)
+
+                print("Parada agregada de manera exitosa")
+                print("Peso actual:", nuevo_peso, "kg")
+
+                #revisamos si el camion ya esta lleno
+                if nuevo_peso == self.capacidad:
+                    print("El camion ya esta lleno")
+                    print("Se dirige al centro de reciclaje o vertedero")
+
+            else:
+
+                # si pasa de la capacidad, no agregamos la parada
+                print("El camion ya no puede cargar mas residuos")
+                print("Se dirige al centro de reciclaje o vertedero")
+
+        else:
+
+            #si el residuo no corresponde al camion
+            print("Este punto no es del tipo de residuo que recoge el camion")
+
+# camion que solo recoge plastico
+class CamionPlastico(Camion):
+
+    def recoger(self):
+        print("El camion de plastico esta recogiendo botellas, empaques, bolsas y demas plasticos")
+
+
+#camion que solo recoge metal
+class CamionMetal(Camion):
+
+    def recoger(self):
+        print("El camion de metal esta recogiendo latas y piezas metalicas")
+
+
+#camion que solo recoge papel
+class CamionPapel(Camion):
+
+    def recoger(self):
+        print("El camion de papel esta recogiendo carton y papel")
+
+
+# camion que solo recoge electronicos
+class CamionElectronico(Camion):
+
+    def recoger(self):
+        print("El camion de electronicos esta recogiendo aparatos viejos")
