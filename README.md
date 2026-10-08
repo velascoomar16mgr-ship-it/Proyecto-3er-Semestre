@@ -14,9 +14,9 @@ Velasco Hernández Omar — Scrum Master (SM) | Arquitectura y Testing
 
 Barcelata Jiménez Valeria Yaretzi — Development Team | Backend y Modelado POO
 
-Luna Monroy Víctor Hugo — Development Team | Algoritmos de Optimización
+Luna Monroy Víctor Hugo — Development Team | Backend y Modelado POO
 
-Tapia Pérez Jorge Arturo — Development Team | Backend y Gestión de Datos
+Tapia Pérez Jorge Arturo — Development Team | Lógica y algoritmo Dijksta 
 
 Orea Ortiz Jesús Emiliano — Development Team | Documentación Técnica
 
@@ -26,4 +26,4 @@ Descripción del Proyecto
 
 Plataforma desarrollada en Python diseñada para optimizar las rutas de recolección de residuos urbanos.
 
-Modelado de puntos de acopio organizados en grafos y algoritmos de búsqueda óptima (Dijkstra / TSP simplificado).
+Modelado de puntos de acopio organizados en grafos y algoritmos de búsqueda óptima (Dijkstra).
