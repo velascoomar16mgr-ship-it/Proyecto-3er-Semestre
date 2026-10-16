@@ -1,180 +1,336 @@
-# PROYECTO:PLANIFICADOR DE RUTA DE RECICLAJE
+"""
+=============================================================================
+PROYECTO INTEGRADOR: PLANIFICADOR DE RUTA DE RECICLAJE
+Impacto ODS 2030: ODS 12 (Producción y Consumo Responsables) y ODS 13 (Acción por el Clima)
+Módulo: Core de Dominio y Arquitectura POO
+=============================================================================
 
-# CLASE Principal: RESIDUO
-# Esta es la clase principal de nuestro proyecto
-# Aquí colocamos las características que todos los residuos
-class Residuo:
+HISTORIAL DE CAMBIOS Y MEJORAS RESPECTO A LA VERSIÓN 1:
+-----------------------------------------------------------------------------
+1. Superclases Abstractas (ABC): Se convirtieron 'Residuo' y 'Camion' en clases
+   abstractas para evitar la creación de objetos genéricos sin material definido.
+2. Encapsulamiento Real: Los atributos públicos (self.nombre, self.peso) ahora
+   son privados (self._nombre, self._peso) y se accede a ellos mediante Getters
+   y Setters con validación de datos.
+3. Excepciones Personalizadas: Se reemplazaron los mensajes con 'print()' por
+   clases de error propias que heredan de 'Exception' para control formal con try/except.
+4. Herencia Optimizada con super(): Las subclases de camión ya no requieren
+   recibir el tipo de material manualmente; lo configuran automáticamente en super().__init__().
+5. Polimorfismo: Los métodos reciclar() y ejecutar_vaciado() están
+   declarados como abstractos, obligando a cada subclase a implementar su proceso.
+=============================================================================
+"""
 
-    # CONSTRUCTOR
-    # El constructor se utiliza para darle informacion al objeto cuando lo creamos
-    def __init__(self, nombre, peso):
+from abc import ABC, abstractmethod
+from typing import List
 
-        # Guardamos el nombre del residuo
-        self.nombre = nombre
 
-        # Guardamos el peso del residuo en kilogramos
-        self.peso = peso
+# =============================================================================
+# 1. EXCEPCIONES PERSONALIZADAS DEL DOMINIO
+# =============================================================================
+# Justificación POO: En sistemas profesionales no se usan 'print()' para avisar
+# de un error. Se lanzan excepciones específicas para que el programa pueda
+# atraparlas con bloques 'try / except' y evitar caídas inesperadas del sistema.
 
-    # METODO PARA PODER MOSTRAR INFORMACION
-    # Este metodo muestra los datos principales del residuo
-    def mostrar_info(self):
+class ReciclajeException(Exception):
+    #Clase base de la que heredan todos los errores de nuestro sistema de reciclaje.
+    pass
 
-        # Mostramos el nombre del residuo.
-        print("Nombre:", self.nombre)
 
-        # Mostramos el peso del residuo
-        print("Peso:", self.peso, "kg")
+class PesoInvalidoException(ReciclajeException):
+    #Se lanza cuando un residuo o carga tiene un peso menor o igual a 0 kg.
+    pass
 
-# CLASE: PLASTICO
-# Esta clase hereda de la clase Residuo
+
+class CapacidadExcedidaException(ReciclajeException):
+    #Se lanza cuando el peso de un punto de acopio supera el espacio disponible del camión.
+    pass
+
+
+class TipoResiduoIncompatibleException(ReciclajeException):
+    #Se lanza cuando se intenta mezclar materiales distintos (ej. depositar Metal en un contenedor de Plástico).
+    pass
+
+
+# =============================================================================
+# 2. JERARQUÍA DE RESIDUOS (Superclase Abstracta y Subclases)
+# =============================================================================
+
+class Residuo(ABC):
+    """""
+    CLASE BASE ABSTRACTA: Representa el concepto genérico de un residuo.
+    - Hereda de 'ABC' (Abstract Base Class), lo que prohíbe instanciarla directamente:
+      nadie puede hacer 'r = Residuo("cosa", 10)' porque no existe un residuo sin material.
+    - Establece el contrato que todas las subclases deben cumplir.
+    """
+
+    def __init__(self, nombre: str, peso: float):
+        # Atributos protegidos 
+        self._nombre = nombre
+        # Usamos set directamente en el constructor para validar que el peso sea positivo desde el inicio
+        self.set_peso(peso)
+
+    # -------------------------------------------------------------------------
+    # GET Y SET (Encapsulamiento)
+    # -------------------------------------------------------------------------
+    def get_nombre(self) -> str:
+        #Devuelve el nombre del residuo.
+        return self._nombre
+
+    def set_nombre(self, nuevo_nombre: str):
+        #Permite renombrar el residuo.
+        self._nombre = nuevo_nombre
+
+    def get_peso(self) -> float:
+        #Devuelve el peso actual del residuo en kilogramos.
+        return self._peso
+
+    def set_peso(self, nuevo_peso: float):
+        
+       # Asigna el peso del residuo validando que no sea negativo ni cero.
+        #Lanza PesoInvalidoException si el dato es incorrecto.
+        
+        if nuevo_peso <= 0:
+            raise PesoInvalidoException(
+                f"Error de validación: El peso de '{self._nombre}' debe ser mayor a 0 kg. "
+                f"Valor ingresado: {nuevo_peso}"
+            )
+        self._peso = nuevo_peso
+
+    # -------------------------------------------------------------------------
+    # MÉTODOS ABSTRACTOS (Polimorfismo)
+    # -------------------------------------------------------------------------
+    @abstractmethod              # Usamos el decorardor para extender y añadir funcionalidad a la funcion 
+    def reciclar(self) -> str:   # Cualquier clase hija que herede de esta clase principal estará obligada a escribir su propio método reciclar()
+        """
+        Contrato: Cada material concreto está obligado a definir su propio
+        procedimiento de reciclaje.
+        """                      # El método reciclar(self) es abstracto y no tiene una implementación real aquí
+        pass                     # pass es una instrucción nula que básicamente le dice al programa: "aquí no hay nada que ejecutar por ahora"
+    @abstractmethod
+    def obtener_tipo(self) -> str:
+        """Contrato: Cada subclase debe reportar su categoría (ej. 'Plastico')."""
+        pass
+
+    def __str__(self) -> str:
+        """Representación legible en texto para depuración y logs."""
+        return f"[{self.obtener_tipo()}] {self.get_nombre()} ({self.get_peso()} kg)"
+
+
+# --- SUBCLASES CONCRETAS DE RESIDUOS ---
+# Cada clase hija implementa el polimorfismo especificando cómo se procesa su material.
+
 class Plastico(Residuo):
+    """Especialización para residuos de polímeros (PET, HDPE, bolsas, empaques)."""
+    def reciclar(self) -> str:
+        return f"{self.get_nombre()}: Se lava, tritura y funde en pellets para fabricar nuevos envases."
 
-    # Este metodo indica como es que se puede reciclar el plastico
-    def reciclar(self):
-        print("El plastico se puede lavar y llevar a reciclaje.")
+    def obtener_tipo(self) -> str:
+        return "Plastico"
 
-# CLASE: METAL
+
 class Metal(Residuo):
+    """Especialización para metales ferrosos y no ferrosos (aluminio, chatarra, cobre)."""
+    def reciclar(self) -> str:
+        return f"{self.get_nombre()}: Se separa  y se funde en lingotes industriales."
 
-    # Este metodo indica como se puede reciclar el metal
-    def reciclar(self):
-        print("El metal se puede separar y llevar a reciclaje.")
+    def obtener_tipo(self) -> str:
+        return "Metal"
 
 
-# CLASE: PAPEL
 class Papel(Residuo):
+    """Especialización para celulosa (cartón, periódicos, hojas de oficina)."""
+    def reciclar(self) -> str:
+        return f"{self.get_nombre()}: Se desfibra con agua y se desentinta para obtener pulpa reciclada."
 
-    # Este metodo indica que podemos hacer con el papel
-    def reciclar(self):
-        print("El papel se puede reutilizar o reciclar.")
+    def obtener_tipo(self) -> str:
+        return "Papel"
 
 
-# CLASE: ELECTRONICO
 class Electronico(Residuo):
+    """Especialización para RAEE (componentes de cómputo, cables, tarjetas lógicas)."""
+    def reciclar(self) -> str:
+        return f"{self.get_nombre()}: Se desensambla en punto limpio para recuperar oro/cobre y neutralizar plomo."
 
-    # Este metodo indica donde debe llevarse este tipo de residuo para su reciclaje
-    def reciclar(self):
-        print("El electronico debe llevarse a un punto especializado.")
+    def obtener_tipo(self) -> str:
+        return "Electronico"
 
 
-# aqui se junta la basura de un lugar
+# =============================================================================
+# 3. PUNTOS DE ACOPIO (Agrupación y Manejo de Colecciones)
+# =============================================================================
+
 class PuntoAcopio:
+    """
+    Representa un contenedor o centro de recolección en la ciudad.
+    - Maneja una lista interna de objetos de tipo 'Residuo'.
+    - Aplica la validación para que no se depositen residuos de categorías incorrectas.
+    """
 
-    def __init__(self, nombre, tipo_residuo):
-        self.nombre = nombre               # como se llama el lugar
-        self.tipo_residuo = tipo_residuo   #el tipo de basura que recibe
-        self.residuos = []                 # lista de residuos que hay 
+    def __init__(self, id_punto: str, nombre: str, tipo_residuo: str):
+        self._id = id_punto                    # Identificador único (ej. 'P01')
+        self._nombre = nombre                  # Nombre de la ubicación (ej. 'Parque Central')
+        self._tipo_residuo = tipo_residuo      # Categoría de basura que admite este contenedor
+        self._residuos: List[Residuo] = []     # Lista interna protegida de residuos almacenados
 
-    #mete un residuo nuevo a este punto
-    def agregar_residuo(self, residuo):
-        self.residuos.append(residuo)
+    # -------------------------------------------------------------------------
+    # GET Y SET
+    # -------------------------------------------------------------------------
+    def get_id(self) -> str:
+        return self._id
 
-    # suma el peso de todo lo que hay en el punto
-    def peso_total(self):
-        total = 0
-        i = 0
-        while i < len(self.residuos):
-            total = total + self.residuos[i].peso
-            i = i + 1
-        return total
+    def get_nombre(self) -> str:
+        return self._nombre
+
+    def set_nombre(self, nuevo_nombre: str):
+        self._nombre = nuevo_nombre
+
+    def get_tipo_residuo(self) -> str:
+        return self._tipo_residuo
+
+    def set_tipo_residuo(self, nuevo_tipo: str):
+        self._tipo_residuo = nuevo_tipo
+
+    def get_residuos(self) -> List[Residuo]:
+        """Devuelve una copia de la lista de residuos para evitar modificaciones externas directas."""
+        return list(self._residuos)
+
+    def get_peso_total(self) -> float:
+        """
+        Calcula la masa acumulada sumando el 'get_peso()' de cada residuo almacenado.
+        Usa la función nativa 'sum()' de Python (mucho más rápida y limpia que un bucle manual).
+        """
+        return sum(residuo.get_peso() for residuo in self._residuos)
+
+    # -------------------------------------------------------------------------
+    # LÓGICA DE NEGOCIO
+    # -------------------------------------------------------------------------
+    def agregar_residuo(self, residuo: Residuo):
+        """
+        Agrega un residuo al contenedor tras verificar compatibilidad de material.
+        Lanza TipoResiduoIncompatibleException si no coinciden.
+        """
+        if residuo.obtener_tipo() != self._tipo_residuo:
+            raise TipoResiduoIncompatibleException(
+                f"Rechazo en '{self.get_nombre()}': Se intentó depositar '{residuo.obtener_tipo()}', "
+                f"pero este punto solo admite '{self.get_tipo_residuo()}'."
+            )
+        self._residuos.append(residuo)
+
+    def __str__(self) -> str:
+        return f"Punto '{self.get_nombre()}' [{self.get_tipo_residuo()}] - Carga total: {self.get_peso_total():.2f} kg"
 
 
-# junta varias paradas, esto lo usa el camion
-class Ruta:
+# =============================================================================
+# 4. JERARQUÍA DE CAMIONES RECOLECTORES
+# =============================================================================
 
-    def __init__(self):
-        self.paradas = []   # lista de puntos a los q va a ir
+class Camion(ABC):
+    """
+    CLASE BASE ABSTRACTA DE VEHÍCULOS:
+    - Modela el estado general de cualquier camión: matrícula, material que transporta,
+      capacidad máxima en kg y peso que lleva cargado actualmente.
+    """
 
-    # mete un punto nuevo a la ruta
-    def agregar_parada(self, punto):
-        self.paradas.append(punto)
+    def __init__(self, matricula: str, tipo_residuo: str, capacidad_maxima: float):
+        self._matricula = matricula
+        self._tipo_residuo = tipo_residuo
+        self._capacidad_maxima = capacidad_maxima
+        self._carga_actual: float = 0.0  # El camión inicia su turno vacío
 
-    #muestra las paradas en orden
-    def mostrar_ruta(self):
-        i = 0
-        while i < len(self.paradas):
-            print("  parada", i + 1, ":", self.paradas[i].nombre)
-            i = i + 1
+    # -------------------------------------------------------------------------
+    # GET Y SET
+    # -------------------------------------------------------------------------
+    def get_matricula(self) -> str:
+        return self._matricula
 
-    #aqui sumamos el peso de todas las paradas
-    def peso_total(self):
-        total = 0
-        i = 0
-        while i < len(self.paradas):
-            total = total + self.paradas[i].peso_total()
-            i = i + 1
-        return total
+    def get_tipo_residuo(self) -> str:
+        return self._tipo_residuo
+
+    def get_capacidad_maxima(self) -> float:
+        return self._capacidad_maxima
+
+    def set_capacidad_maxima(self, nueva_capacidad: float):
+        if nueva_capacidad <= 0:
+            raise ValueError("La capacidad del camión debe ser un valor positivo.")
+        self._capacidad_maxima = nueva_capacidad
+
+    def get_carga_actual(self) -> float:
+        return self._carga_actual
+
+    def get_espacio_disponible(self) -> float:
+        """Calcula cuántos kilogramos libres le quedan al camión antes de llenarse."""
+        return self._capacidad_maxima - self._carga_actual
+
+    # -------------------------------------------------------------------------
+    # LÓGICA DE NEGOCIO (Operación de Carga)
+    # -------------------------------------------------------------------------
+    def cargar_punto(self, punto: PuntoAcopio) -> float:
+        """
+        Transfiere los residuos de un punto de acopio a la tolva del camión.
+        Valida:
+        1. Que el camión recolecte el mismo tipo de material del punto.
+        2. Que el peso del punto no sobrepase el espacio libre del camión.
+        Retorna la cantidad de kilos recolectados.
+        """
+        # Validación 1: Compatibilidad de material
+        if punto.get_tipo_residuo() != self._tipo_residuo:
+            raise TipoResiduoIncompatibleException(
+                f"El camión {self.get_matricula()} recoge '{self.get_tipo_residuo()}', "
+                f"no puede atender el punto '{punto.get_nombre()}' de '{punto.get_tipo_residuo()}'."
+            )
+
+        peso_a_cargar = punto.get_peso_total()
+
+        # Validación 2: Capacidad máxima
+        if peso_a_cargar > self.get_espacio_disponible():
+            raise CapacidadExcedidaException(
+                f"Capacidad insuficiente en camión {self.get_matricula()}. "
+                f"Espacio libre: {self.get_espacio_disponible():.2f} kg, "
+                f"Punto '{punto.get_nombre()}' pesa: {peso_a_cargar:.2f} kg."
+            )
+
+        # Si supera ambas validaciones, suma la carga
+        self._carga_actual += peso_a_cargar
+        return peso_a_cargar
+
+    @abstractmethod
+    def ejecutar_vaciado(self) -> str:
+        """Método abstracto que simula la entrega de la carga en la planta de tratamiento final."""
+        pass
 
 
-# clase base de los camioncitos
-class Camion:
+# --- SUBCLASES ESPECÍFICAS DE CAMIÓN ---
+# Nota de Arquitectura: Usan super().__init__() fijando su propio material.
+# Así es imposible crear accidentalmente un CamionPlastico que recoja otro tipo de residuo.
 
-    def __init__(self, nombre, tipo_residuo, capacidad):
-        self.nombre = nombre
-        self.tipo_residuo = tipo_residuo   #el tipo de basura que recoge cada uno
-        self.capacidad = capacidad         # cuanto le cabe en kilos a cada camion
-        self.ruta = Ruta()                 #y aqui se guarda su ruta
-
-    # agrega una parada a la ruta del camion
-    def agregar_parada(self, punto):
-
-        # primero revisamos que el tipo de residuo sea el correcto
-        if punto.tipo_residuo == self.tipo_residuo:
-
-            # calculamos cuanto pesa el camion ahorita
-            peso_actual = self.ruta.peso_total()
-
-            #calculamos cuanto pesaria si agregamos esta parada
-            nuevo_peso = peso_actual + punto.peso_total()
-
-            #revisamos que no pase de la capacidad del camion
-            if nuevo_peso <= self.capacidad:
-
-                # si le cabe, agregamos la parada
-                self.ruta.agregar_parada(punto)
-
-                print("Parada agregada de manera exitosa")
-                print("Peso actual:", nuevo_peso, "kg")
-
-                #revisamos si el camion ya esta lleno
-                if nuevo_peso == self.capacidad:
-                    print("El camion ya esta lleno")
-                    print("Se dirige al centro de reciclaje o vertedero")
-
-            else:
-
-                # si pasa de la capacidad, no agregamos la parada
-                print("El camion ya no puede cargar mas residuos")
-                print("Se dirige al centro de reciclaje o vertedero")
-
-        else:
-
-            #si el residuo no corresponde al camion
-            print("Este punto no es del tipo de residuo que recoge el camion")
-
-# camion que solo recoge plastico
 class CamionPlastico(Camion):
+    def __init__(self, matricula: str, capacidad_maxima: float):
+        super().__init__(matricula, "Plastico", capacidad_maxima)
 
-    def recoger(self):
-        print("El camion de plastico esta recogiendo botellas, empaques, bolsas y demas plasticos")
+    def ejecutar_vaciado(self) -> str:
+        return f"Camión {self.get_matricula()}: Descargando {self.get_carga_actual()} kg de plásticos en la planta petroquímica."
 
 
-#camion que solo recoge metal
 class CamionMetal(Camion):
+    def __init__(self, matricula: str, capacidad_maxima: float):
+        super().__init__(matricula, "Metal", capacidad_maxima)
 
-    def recoger(self):
-        print("El camion de metal esta recogiendo latas y piezas metalicas")
+    def ejecutar_vaciado(self) -> str:
+        return f"Camión {self.get_matricula()}: Descargando {self.get_carga_actual()} kg de metales en fundidora."
 
 
-#camion que solo recoge papel
 class CamionPapel(Camion):
+    def __init__(self, matricula: str, capacidad_maxima: float):
+        super().__init__(matricula, "Papel", capacidad_maxima)
 
-    def recoger(self):
-        print("El camion de papel esta recogiendo carton y papel")
+    def ejecutar_vaciado(self) -> str:
+        return f"Camión {self.get_matricula()}: Descargando {self.get_carga_actual()} kg de papel y cartón en celulosa."
 
 
-# camion que solo recoge electronicos
 class CamionElectronico(Camion):
+    def __init__(self, matricula: str, capacidad_maxima: float):
+        super().__init__(matricula, "Electronico", capacidad_maxima)
 
-    def recoger(self):
-        print("El camion de electronicos esta recogiendo aparatos viejos")
+    def ejecutar_vaciado(self) -> str:
+        return f"Camión {self.get_matricula()}: Descargando {self.get_carga_actual()} kg de electrónicos en centro especializado."
