@@ -1,1 +1,119 @@
+# Importo flet y le pongo "ft" para no escribir flet a cada rato
+import flet as ft
 
+# Guardo los colores en variables para no repetir los codigos
+VERDE = "#2E7D32"        # verde principal de la app
+VERDE_CLARO = "#E3F2E4"  # verde clarito para el fondo del mapa
+TEXTO = "#212121"        # casi negro para los textos normales
+GRIS = "#6B6B6B"         # gris para textos menos importantes
+BLANCO = "#FFFFFF"       # blanco para las cajas y la barra
+
+
+# Esta funcion hace una tarjeta con un titulo y un valor
+# La uso 3 veces: para distancia, tiempo y CO2
+def tarjeta(titulo, valor):
+    # el titulo va chiquito y en gris
+    texto_titulo = ft.Text(titulo, size=12, color=GRIS)
+    # el valor va grande, verde y en negritas
+    texto_valor = ft.Text(valor, size=22, color=VERDE, weight=ft.FontWeight.BOLD)
+
+    # Column pone el titulo arriba y el valor abajo
+    columna = ft.Column([texto_titulo, texto_valor])
+
+    # Container es la caja blanca que envuelve todo
+    caja = ft.Container(
+        content=columna,
+        bgcolor=BLANCO,
+        padding=12,        # espacio de adentro
+        border_radius=12,  # esquinas redondas
+        expand=True,       # para que las 3 tarjetas midan igual
+    )
+    return caja
+
+
+# Funcion principal, aqui armo toda la pantalla
+# page es la ventana de la app
+def main(page):
+    page.title = "EcoRutas"   # nombre de la ventana
+    page.bgcolor = "#F5F5F2"  # fondo gris clarito
+    page.padding = 16         # espacio entre la orilla y el contenido
+
+    # ----- Barra de arriba -----
+    # icono de reciclaje y nombre de la app (lado izquierdo)
+    icono_app = ft.Icon(ft.Icons.RECYCLING, color=VERDE)
+    titulo_app = ft.Text("EcoRutas", color=VERDE, weight=ft.FontWeight.BOLD)
+
+    # circulo verde con el muñequito del usuario (lado derecho)
+    icono_usuario = ft.Icon(ft.Icons.PERSON, color=BLANCO)
+    circulo_usuario = ft.CircleAvatar(content=icono_usuario, bgcolor=VERDE)
+    # lo meto en una caja con padding para que no quede pegado a la orilla
+    caja_usuario = ft.Container(content=circulo_usuario, padding=8)
+
+    # armo la barra con todo lo de arriba
+    page.appbar = ft.AppBar(
+        leading=icono_app,       # lo que va a la izquierda
+        title=titulo_app,        # el nombre
+        bgcolor=BLANCO,
+        actions=[caja_usuario],  # lo que va a la derecha
+    )
+
+    # ----- Datos de prueba -----
+    # por ahora son inventados, luego van a salir del Dijkstra de Arturo y Omar
+    distancia = 14.8  # km
+    tiempo = 38       # minutos
+    co2 = 3.2         # kg
+
+    # ----- Encabezado -----
+    # etiqueta chiquita arriba del titulo
+    etiqueta = ft.Text("PLANIFICACION LOGISTICA", size=11, color=VERDE, weight=ft.FontWeight.BOLD)
+    # titulo grande
+    titulo = ft.Text("Rutas de Reciclaje", size=24, color=TEXTO, weight=ft.FontWeight.BOLD)
+    # descripcion abajo del titulo
+    descripcion = ft.Text("Selecciona los puntos de acopio para generar la ruta optima.", size=14, color=GRIS)
+
+    # ----- Etiquetas del camion -----
+    # caja blanca con el numero del camion
+    texto_camion = ft.Text("Camion #04", size=13, color=TEXTO)
+    caja_camion = ft.Container(content=texto_camion, bgcolor=BLANCO, padding=8, border_radius=8)
+
+    # caja blanca con los km que aguanta el camion
+    texto_autonomia = ft.Text("Autonomia: 142 km", size=13, color=TEXTO)
+    caja_autonomia = ft.Container(content=texto_autonomia, bgcolor=BLANCO, padding=8, border_radius=8)
+
+    # Row pone las dos cajas una al lado de la otra
+    # wrap=True hace que si no caben (en celular) se bajen
+    fila_camion = ft.Row([caja_camion, caja_autonomia], wrap=True)
+
+    # ----- Mapa -----
+    # por ahora es solo un cuadro verde, despues aqui va el mapa real
+    texto_mapa = ft.Text("Aqui va el mapa", color=VERDE)
+    mapa = ft.Container(
+        content=texto_mapa,
+        bgcolor=VERDE_CLARO,
+        height=250,                     # alto del cuadro
+        border_radius=16,
+        alignment=ft.Alignment.CENTER,  # el texto queda en el centro
+    )
+
+    # ----- Tarjetas de metricas -----
+    # uso la funcion tarjeta de arriba
+    # str() convierte el numero a texto para poder pegarle la unidad
+    tarjeta_distancia = tarjeta("Distancia", str(distancia) + " km")
+    tarjeta_tiempo = tarjeta("Tiempo", str(tiempo) + " min")
+    tarjeta_co2 = tarjeta("CO2", str(co2) + " kg")
+
+    # las 3 tarjetas en una fila
+    fila_tarjetas = ft.Row([tarjeta_distancia, tarjeta_tiempo, tarjeta_co2])
+
+    # ----- Poner todo en la pantalla -----
+    # page.add pone las cosas una debajo de otra, en este orden
+    page.add(etiqueta)
+    page.add(titulo)
+    page.add(descripcion)
+    page.add(fila_camion)
+    page.add(mapa)
+    page.add(fila_tarjetas)
+
+
+# Esto arranca la app con la funcion main
+ft.run(main)
