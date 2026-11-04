@@ -1,16 +1,83 @@
 # Importo flet y le pongo "ft" para no escribir flet a cada rato
 import flet as ft
 
+# Importo el backend del equipo
+# grafo_rutas.py tiene el grafo y el Dijkstra (Arturo y Omar)
+# core_reciclaje.py tiene los residuos, puntos de acopio y camiones
+from grafo_rutas import Grafo, Parada, PlanificadorRutas
+from core_reciclaje import (
+    Plastico, Metal, Papel, Electronico,
+    CamionPlastico, CamionMetal, CamionPapel, CamionElectronico,
+    ReciclajeException,
+)
+
 # Guardo los colores en variables para no repetir los codigos
 VERDE = "#2E7D32"        # verde principal de la app
 VERDE_CLARO = "#E3F2E4"  # verde clarito para el fondo del mapa
+AMARILLO = "#F9A825"     # amarillo para la barra de la tolva
 TEXTO = "#212121"        # casi negro para los textos normales
 GRIS = "#6B6B6B"         # gris para textos menos importantes
 BLANCO = "#FFFFFF"       # blanco para las cajas y la barra
+ROJO = "#C62828"         # rojo para los errores
+
+# Los materiales tienen que escribirse igual que en el backend (sin acento)
+MATERIALES = ["Plastico", "Metal", "Papel", "Electronico"]
+
+# Para cada material, que clase de camion se usa
+CAMIONES = {
+    "Plastico": CamionPlastico,
+    "Metal": CamionMetal,
+    "Papel": CamionPapel,
+    "Electronico": CamionElectronico,
+}
+
+
+# Esta funcion arma la ciudad (el grafo) con calles y paradas
+# Es igual a la prueba de grafo_rutas.py, mas paradas de otros materiales
+def crear_ciudad():
+    ciudad = Grafo()
+
+    # la base de donde sale el camion y dos cruces de calles
+    ciudad.add_parada("Base_Central", 19.4326, -99.1332, "Plastico")
+    ciudad.add_interseccion("Cruce_Avenida_Juarez", 19.4335, -99.1450)
+    ciudad.add_interseccion("Cruce_Paseo_Reforma", 19.4270, -99.1670)
+
+    # paradas de plastico
+    p1 = ciudad.add_parada("Parque_Alameda", 19.4350, -99.1430, "Plastico")
+    p1.agregar_residuo(Plastico("Botellas PET", 25.0))
+    p2 = ciudad.add_parada("Parque_Espana", 19.4160, -99.1710, "Plastico")
+    p2.agregar_residuo(Plastico("Envases Varios", 30.0))
+
+    # parada de metal
+    p3 = ciudad.add_parada("Mercado_Juarez", 19.4280, -99.1560, "Metal")
+    p3.agregar_residuo(Metal("Latas", 15.0))
+
+    # parada de papel
+    p4 = ciudad.add_parada("Biblioteca_Central", 19.4340, -99.1380, "Papel")
+    p4.agregar_residuo(Papel("Carton", 20.0))
+
+    # parada de electronicos
+    p5 = ciudad.add_parada("Plaza_Tecnologia", 19.4200, -99.1600, "Electronico")
+    p5.agregar_residuo(Electronico("Cables y tarjetas", 10.0))
+
+    # conecto las calles (los km se calculan solos con Haversine)
+    ciudad.conectar_nodos("Base_Central", "Cruce_Avenida_Juarez")
+    ciudad.conectar_nodos("Cruce_Avenida_Juarez", "Parque_Alameda")
+    ciudad.conectar_nodos("Parque_Alameda", "Cruce_Paseo_Reforma")
+    ciudad.conectar_nodos("Cruce_Paseo_Reforma", "Parque_Espana")
+    ciudad.conectar_nodos("Parque_Espana", "Base_Central")
+    ciudad.conectar_nodos("Cruce_Avenida_Juarez", "Mercado_Juarez")
+    ciudad.conectar_nodos("Mercado_Juarez", "Cruce_Paseo_Reforma")
+    ciudad.conectar_nodos("Base_Central", "Biblioteca_Central")
+    ciudad.conectar_nodos("Cruce_Paseo_Reforma", "Plaza_Tecnologia")
+    ciudad.conectar_nodos("Plaza_Tecnologia", "Parque_Espana")
+
+    return ciudad
 
 
 # Esta funcion hace una tarjeta con un titulo y un valor
-# La uso 3 veces: para distancia, tiempo y CO2
+# La uso 3 veces: para distancia, paradas y peso
+# Regresa la caja y el texto del valor, para poder cambiarlo despues
 def tarjeta(titulo, valor):
     # el titulo va chiquito y en gris
     texto_titulo = ft.Text(titulo, size=12, color=GRIS)
@@ -28,7 +95,7 @@ def tarjeta(titulo, valor):
         border_radius=12,  # esquinas redondas
         expand=True,       # para que las 3 tarjetas midan igual
     )
-    return caja
+    return caja, texto_valor
 
 
 # Funcion principal, aqui armo toda la pantalla
@@ -37,6 +104,24 @@ def main(page):
     page.title = "EcoRutas"   # nombre de la ventana
     page.bgcolor = "#F5F5F2"  # fondo gris clarito
     page.padding = 16         # espacio entre la orilla y el contenido
+    page.scroll = ft.ScrollMode.AUTO  # para poder bajar si no cabe todo
+    page.window.width = 390   # tamaño de celular (390 x 800)
+    page.window.height = 800
+
+    # creo la ciudad una sola vez
+    ciudad = crear_ciudad()
+
+    # ----- Mensajes -----
+    # barrita roja que sale abajo cuando hay un error
+    def mostrar_error(mensaje):
+        aviso = ft.SnackBar(ft.Text(mensaje, color=BLANCO), bgcolor=ROJO)
+        page.show_dialog(aviso)
+
+    # ventanita en medio de la pantalla con un boton "Entendido"
+    def mostrar_aviso(titulo, mensaje):
+        boton_ok = ft.TextButton("Entendido", on_click=lambda e: page.pop_dialog())
+        ventana = ft.AlertDialog(title=ft.Text(titulo), content=ft.Text(mensaje), actions=[boton_ok])
+        page.show_dialog(ventana)
 
     # ----- Barra de arriba -----
     # icono de reciclaje y nombre de la app (lado izquierdo)
@@ -57,23 +142,17 @@ def main(page):
         actions=[caja_usuario],  # lo que va a la derecha
     )
 
-    # ----- Datos de prueba -----
-    # por ahora son inventados, luego van a salir del Dijkstra de Arturo y Omar
-    distancia = 14.8  # km
-    tiempo = 38       # minutos
-    co2 = 3.2         # kg
-
     # ----- Encabezado -----
     # etiqueta chiquita arriba del titulo
     etiqueta = ft.Text("PLANIFICACION LOGISTICA", size=11, color=VERDE, weight=ft.FontWeight.BOLD)
     # titulo grande
     titulo = ft.Text("Rutas de Reciclaje", size=24, color=TEXTO, weight=ft.FontWeight.BOLD)
     # descripcion abajo del titulo
-    descripcion = ft.Text("Selecciona los puntos de acopio para generar la ruta optima.", size=14, color=GRIS)
+    descripcion = ft.Text("Elige el tipo de residuo y la capacidad del camion para generar la ruta optima.", size=14, color=GRIS)
 
     # ----- Etiquetas del camion -----
-    # caja blanca con el numero del camion
-    texto_camion = ft.Text("Camion #04", size=13, color=TEXTO)
+    # caja blanca con la matricula del camion
+    texto_camion = ft.Text("Camion ECO-01", size=13, color=TEXTO)
     caja_camion = ft.Container(content=texto_camion, bgcolor=BLANCO, padding=8, border_radius=8)
 
     # caja blanca con los km que aguanta el camion
@@ -90,20 +169,154 @@ def main(page):
     mapa = ft.Container(
         content=texto_mapa,
         bgcolor=VERDE_CLARO,
-        height=250,                     # alto del cuadro
+        height=180,                     # alto del cuadro
         border_radius=16,
         alignment=ft.Alignment.CENTER,  # el texto queda en el centro
     )
 
     # ----- Tarjetas de metricas -----
-    # uso la funcion tarjeta de arriba
-    # str() convierte el numero a texto para poder pegarle la unidad
-    tarjeta_distancia = tarjeta("Distancia", str(distancia) + " km")
-    tarjeta_tiempo = tarjeta("Tiempo", str(tiempo) + " min")
-    tarjeta_co2 = tarjeta("CO2", str(co2) + " kg")
+    # empiezan en "--" porque todavia no se calcula la ruta
+    tarjeta_distancia, valor_distancia = tarjeta("Distancia", "--")
+    tarjeta_paradas, valor_paradas = tarjeta("Paradas", "--")
+    tarjeta_peso, valor_peso = tarjeta("Peso", "--")
 
     # las 3 tarjetas en una fila
-    fila_tarjetas = ft.Row([tarjeta_distancia, tarjeta_tiempo, tarjeta_co2])
+    fila_tarjetas = ft.Row([tarjeta_distancia, tarjeta_paradas, tarjeta_peso])
+
+    # ----- US-07: Selector de material -----
+    # aqui se ponen las paradas que aceptan el material elegido
+    lista_paradas = ft.Column()
+
+    # esta funcion se ejecuta cada vez que cambio el material
+    def cambiar_material(e=None):
+        material = selector.value
+        lista_paradas.controls.clear()  # borro las paradas de antes
+
+        # recorro todos los nodos de la ciudad
+        for nombre, nodo in ciudad.get_nodos().items():
+            # solo me quedo con las paradas de ese material (sin la base)
+            if isinstance(nodo, Parada) and nodo.get_tipo_residuo() == material and nombre != "Base_Central":
+                fila = ft.ListTile(
+                    leading=ft.Icon(ft.Icons.PLACE, color=VERDE),
+                    title=ft.Text(nombre),
+                    subtitle=ft.Text(str(nodo.get_peso_total()) + " kg pendientes"),
+                )
+                lista_paradas.controls.append(fila)
+
+        # si no hay ninguna, aviso
+        if len(lista_paradas.controls) == 0:
+            lista_paradas.controls.append(ft.Text("No hay paradas para este material", color=GRIS))
+
+        page.update()  # refresco la pantalla
+
+    # Dropdown es el menu que se despliega
+    opciones = [ft.DropdownOption(m) for m in MATERIALES]
+    selector = ft.Dropdown(
+        label="Tipo de residuo",
+        value="Plastico",           # empieza en plastico
+        options=opciones,
+        on_select=cambiar_material,  # cuando cambio, se recargan las paradas
+        width=float("inf"),
+    )
+
+    # ----- Capacidad del camion -----
+    # aqui el usuario escribe cuantos kg le caben al camion
+    campo_capacidad = ft.TextField(
+        label="Capacidad del camion (kg)",
+        value="50",
+        keyboard_type=ft.KeyboardType.NUMBER,  # en el celular sale el teclado de numeros
+    )
+
+    # ----- US-08: Barra de la tolva -----
+    # la tolva es el contenedor del camion, la barra muestra que tan lleno va
+    titulo_tolva = ft.Text("Capacidad de la tolva", size=16, color=TEXTO, weight=ft.FontWeight.BOLD)
+    barra_tolva = ft.ProgressBar(value=0, color=AMARILLO, bgcolor="#EEEEEE", height=12)
+    texto_tolva = ft.Text("0.0 / 50.0 kg (0%)", size=13, color=TEXTO)
+
+    # ----- Recorrido -----
+    # aqui se ponen los pasos de la ruta cuando se calcula
+    lista_recorrido = ft.Column()
+
+    # ----- US-10: Boton Iniciar Recoleccion -----
+    def iniciar_recoleccion(e):
+        texto = campo_capacidad.value.strip()
+
+        # validacion 1: campo vacio
+        if texto == "":
+            mostrar_error("Escribe la capacidad del camion.")
+            return
+
+        # validacion 2: que sea un numero
+        try:
+            capacidad = float(texto)
+        except ValueError:
+            mostrar_error("La capacidad debe ser un numero, por ejemplo 50")
+            return
+
+        # validacion 3: que no sea cero ni negativo
+        if capacidad <= 0:
+            mostrar_error("La capacidad debe ser mayor a 0 kg.")
+            return
+
+        # creo el camion del material elegido
+        material = selector.value
+        ClaseCamion = CAMIONES[material]
+        camion = ClaseCamion("ECO-01", capacidad_maxima=capacidad)
+
+        # llamo al Dijkstra del backend
+        planificador = PlanificadorRutas(ciudad, id_base_central="Base_Central")
+        try:
+            resultado = planificador.planificar_ruta(camion)
+        except ReciclajeException as error:
+            # si el backend lanza un error, lo muestro en vez de que truene la app
+            mostrar_error(str(error))
+            return
+
+        # saco los datos que regresa planificar_ruta()
+        distancia = resultado["distancia_total_km"]
+        carga = resultado["carga_final_kg"]
+        itinerario = resultado["itinerario"]
+
+        # actualizo las tarjetas
+        valor_distancia.value = str(distancia) + " km"
+        valor_paradas.value = str(len(itinerario))
+        valor_peso.value = str(carga) + " kg"
+
+        # actualizo la barra de la tolva (va de 0 a 1)
+        porcentaje = carga / capacidad
+        barra_tolva.value = porcentaje
+        texto_tolva.value = str(carga) + " / " + str(capacidad) + " kg (" + str(round(porcentaje * 100)) + "%)"
+
+        # pongo los pasos del recorrido
+        lista_recorrido.controls.clear()
+        for numero, paso in enumerate(itinerario, start=1):
+            camino = " -> ".join(paso["camino"])
+            fila = ft.ListTile(
+                leading=ft.CircleAvatar(content=ft.Text(str(numero)), bgcolor=VERDE_CLARO),
+                title=ft.Text(paso["hacia"]),
+                subtitle=ft.Text(camino + "\n" + str(paso["distancia_km"]) + " km  |  +" + str(paso["kilos"]) + " kg"),
+            )
+            lista_recorrido.controls.append(fila)
+
+        # si no hubo ninguna parada, aviso
+        if len(itinerario) == 0:
+            lista_recorrido.controls.append(ft.Text("El camion no pudo recoger ninguna parada.", color=GRIS))
+
+        page.update()
+
+        # validacion 4: si la tolva quedo llena, aviso
+        if carga >= capacidad:
+            mostrar_aviso("Tolva llena", "El camion llego al 100% de su capacidad.")
+
+    boton = ft.FilledButton(
+        "Iniciar Recoleccion",
+        icon=ft.Icons.ROUTE,
+        bgcolor=VERDE,
+        color=BLANCO,
+        height=48,
+        width=float("inf"),
+        on_click=iniciar_recoleccion,
+    )
 
     # ----- Poner todo en la pantalla -----
     # page.add pone las cosas una debajo de otra, en este orden
@@ -113,6 +326,18 @@ def main(page):
     page.add(fila_camion)
     page.add(mapa)
     page.add(fila_tarjetas)
+    # lo nuevo del sprint 3 va despues
+    page.add(selector)
+    page.add(lista_paradas)
+    page.add(campo_capacidad)
+    page.add(boton)
+    page.add(titulo_tolva)
+    page.add(barra_tolva)
+    page.add(texto_tolva)
+    page.add(lista_recorrido)
+
+    # muestro las paradas del material inicial
+    cambiar_material()
 
 
 # Esto arranca la app con la funcion main
